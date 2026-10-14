@@ -21,9 +21,12 @@ public class AtencionRepositoryCustomImpl implements AtencionRepositoryCustom {
     private static final String BASE_DETALLE = "select r.iCodigo_Req, r.sdFecha_Req, r.vSumilla_Req, r.vDescripcion_Req, r.iCodigo_Uo, r.iCodigo_Per, r.siCodigo_Est, e.vNombre_Est, r.iCodigo_CSC, r.iCodigo_Pri from dbo.GRMaeRequerimiento r left join dbo.GRTabEstado e on e.siCodigo_Est=r.siCodigo_Est ";
 
     @Override
-    public List<RequerimientoDetalle> pendientes() {
-        String sql = BASE_DETALLE + " where r.bActivo_Req=1 and exists (select 1 from dbo.GRMovRequerimiento m where m.iCodigo_Req=r.iCodigo_Req and m.bActivo_ReqMov=1 and m.bVigencia_ReqMov=1 and m.iCodigo_PerDes_ReqMov is not null) order by r.sdFecha_Req";
-        return detalles(sql);
+    public List<RequerimientoDetalle> pendientes(int page, int size) {
+        String sql = BASE_DETALLE + " where r.bActivo_Req=1 and exists (select 1 from dbo.GRMovRequerimiento m where m.iCodigo_Req=r.iCodigo_Req and m.bActivo_ReqMov=1 and m.bVigencia_ReqMov=1 and m.iCodigo_PerDes_ReqMov is not null) order by r.sdFecha_Req, r.iCodigo_Req";
+        Query q = entityManager.createNativeQuery(sql);
+        q.setFirstResult(page * size);
+        q.setMaxResults(size);
+        return mapearDetalles(q.getResultList());
     }
 
     @Override
@@ -73,5 +76,60 @@ public class AtencionRepositoryCustomImpl implements AtencionRepositoryCustom {
     private List<RequerimientoDetalle> detalles(String sql,Object...params){Query q=entityManager.createNativeQuery(sql); if(params.length==2){q.setParameter("id",params[0]);} else if(params.length==1){String name=sql.contains(":estado")?"estado":"id";q.setParameter(name,params[0]);} return q.getResultList().stream().map(o->{Object[]r=(Object[])o;return new RequerimientoDetalle(numInt(r[0]),toDate(r[1]),(String)r[2],(String)r[3],numInt(r[4]),numInt(r[5]),numShort(r[6]),(String)r[7],numInt(r[8]),numInt(r[9]));}).toList();}
     private static Integer numInt(Object o){return o==null?null:((Number)o).intValue();}
     private static Short numShort(Object o){return o==null?null:((Number)o).shortValue();}
-    private static LocalDateTime toDate(Object o){return o==null?null:((java.sql.Timestamp)o).toLocalDateTime();}
+    private static LocalDateTime toDate(Object o) {
+        if (o == null) {
+            return null;
+        }
+
+        if (o instanceof LocalDateTime) {
+            return (LocalDateTime) o;
+        }
+
+        if (o instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) o).toLocalDateTime();
+        }
+
+        throw new IllegalArgumentException(
+                "Tipo de fecha no soportado: " + o.getClass().getName()
+        );
+    }
+
+    private List<RequerimientoDetalle> mapearDetalles(List<?> rows) {
+    return rows.stream().map(o -> {
+        Object[] r = (Object[]) o;
+
+        return new RequerimientoDetalle(
+                numInt(r[0]),
+                toDate(r[1]),
+                (String) r[2],
+                (String) r[3],
+                numInt(r[4]),
+                numInt(r[5]),
+                numShort(r[6]),
+                (String) r[7],
+                numInt(r[8]),
+                numInt(r[9])
+        );
+    }).toList();
+    }
+
+    @Override
+    public long contarPendientes() {
+
+    String sql =
+            "SELECT COUNT(*) "
+                    + "FROM dbo.GRMaeRequerimiento r "
+                    + "WHERE r.bActivo_Req = 1 "
+                    + "AND EXISTS ("
+                    + " SELECT 1 "
+                    + " FROM dbo.GRMovRequerimiento m "
+                    + " WHERE m.iCodigo_Req = r.iCodigo_Req "
+                    + " AND m.bActivo_ReqMov = 1 "
+                    + " AND m.bVigencia_ReqMov = 1 "
+                    + " AND m.iCodigo_PerDes_ReqMov IS NOT NULL"
+                    + ")";
+
+    return ((Number) entityManager.createNativeQuery(sql)
+            .getSingleResult()).longValue();
+    }
 }

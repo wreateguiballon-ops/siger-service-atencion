@@ -5,7 +5,8 @@ import sat.siger.service.atencion.model.*;
 import java.util.List;
 
 public interface AtencionRepositoryCustom {
-    List<RequerimientoDetalle> pendientes();
+    List<RequerimientoDetalle> pendientes(int page, int size);
+    long contarPendientes();
     RequerimientoDetalle obtenerDetalle(Integer id);
     ClasificacionResponse obtenerClasificacion(Integer id);
     List<DocumentoAdjunto> obtenerAdjuntos(Integer id);

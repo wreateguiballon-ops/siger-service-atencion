@@ -7,7 +7,10 @@ import sat.siger.service.atencion.dto.*;
 import sat.siger.service.atencion.model.*;
 import sat.siger.service.atencion.service.AtencionService;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api")
@@ -18,7 +21,33 @@ public class AtencionController {
 
     // 1 GET /api/atenciones/pendientes
     @GetMapping("/atenciones/pendientes")
-    public ResponseEntity<List<RequerimientoDetalle>> pendientes() { return ResponseEntity.ok(atencionService.pendientes()); }
+    public ResponseEntity<?> pendientes(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        if (page < 0 || size < 1) {
+            throw new IllegalArgumentException(
+                    "La página debe ser mayor o igual a 0 "
+                            + "y el tamaño debe ser mayor que 0."
+            );
+        }
+
+        size = Math.min(size, 100);
+
+        List<RequerimientoDetalle> registros =
+                atencionService.pendientes(page, size);
+
+        long total = atencionService.contarPendientes();
+
+        Map<String, Object> respuesta = new LinkedHashMap<>();
+        respuesta.put("content", registros);
+        respuesta.put("page", page);
+        respuesta.put("size", size);
+        respuesta.put("totalElements", total);
+        respuesta.put("totalPages", (total + size - 1) / size);
+
+        return ResponseEntity.ok(respuesta);
+    }
 
     // 2 GET /api/requerimientos/{id}
     @GetMapping("/requerimientos/{id}")
@@ -98,9 +127,29 @@ public class AtencionController {
     // 20 GET /api/atenciones?responsableId={id}
     // 21 GET /api/atenciones?estado=EN_PROCESO
     @GetMapping("/atenciones")
-    public ResponseEntity<List<RequerimientoDetalle>> listar(@RequestParam(required=false) Integer responsableId,@RequestParam(required=false) String estado){
-        if(responsableId!=null) return ResponseEntity.ok(atencionService.listarPorResponsable(responsableId));
-        if(estado!=null && !estado.isBlank()) return ResponseEntity.ok(atencionService.listarPorEstado(estado));
-        return ResponseEntity.ok(atencionService.pendientes());
+    public ResponseEntity<List<RequerimientoDetalle>> listar(
+            @RequestParam(required = false) Integer responsableId,
+            @RequestParam(required = false) String estado,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        if (responsableId != null) {
+            return ResponseEntity.ok(
+                    atencionService.listarPorResponsable(responsableId));
+        }
+
+        if (estado != null && !estado.isBlank()) {
+            return ResponseEntity.ok(
+                    atencionService.listarPorEstado(estado));
+        }
+
+        if (page < 0 || size < 1) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        size = Math.min(size, 100);
+
+        return ResponseEntity.ok(
+                atencionService.pendientes(page, size));
     }
 }

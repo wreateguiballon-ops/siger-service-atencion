@@ -16,7 +16,8 @@ public class AtencionServiceImpl implements AtencionService {
 
     public AtencionServiceImpl(RequerimientoRepository repository) { this.repository = repository; }
 
-    @Override @Transactional(readOnly=true) public List<RequerimientoDetalle> pendientes(){ return repository.pendientes(); }
+    @Override @Transactional(readOnly=true) public List<RequerimientoDetalle> pendientes(int page, int size){return repository.pendientes(page, size); }
+    @Override @Transactional(readOnly=true) public long contarPendientes(){return repository.contarPendientes(); }
     @Override @Transactional(readOnly=true) public RequerimientoDetalle obtenerPorId(Integer id){ return require(repository.obtenerDetalle(id),"No existe el requerimiento "+id); }
     @Override @Transactional(readOnly=true) public ClasificacionResponse obtenerClasificacion(Integer id){ return require(repository.obtenerClasificacion(id),"No existe el requerimiento "+id); }
     @Override @Transactional(readOnly=true) public List<DocumentoAdjunto> obtenerAdjuntos(Integer id){ require(repository.obtenerDetalle(id),"No existe el requerimiento "+id); return repository.obtenerAdjuntos(id); }
